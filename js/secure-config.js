@@ -3,7 +3,7 @@
 
 const SECURE_CONFIG = {
   // API Configuration - Replace with your actual values
-  API_URL: 'https://script.google.com/macros/s/AKfycbwxMYgvr044jncgdJfYDzO-zh79Jx0-Y-5qxQDKtshunpPRQZx9sbOqSElK-_4BVa9G/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwIrO65WVN82mm7dQKAguQ7WBl5PvDVN99iECj9e-ORVI5D-zxiCspXZhUZz0BvFcRNEQ/exec',
   API_KEY: 'TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE',
   ADMIN_KEY: 'TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE_ADMIN',
   
