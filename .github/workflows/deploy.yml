@@ -62,7 +62,7 @@ jobs:
             # Replace environment placeholders
             sed "s|process\.env\.GOOGLE_SCRIPT_URL.*|'${GOOGLE_SCRIPT_URL}'|g" "$file" > "dist/$file.tmp"
             sed "s|process\.env\.GOOGLE_SCRIPT_API_KEY.*|'${GOOGLE_SCRIPT_API_KEY}'|g" "dist/$file.tmp" > "dist/$file.tmp2"
-            sed "s|AKfycbwxMYgvr044jncgdJfYDzO-zh79Jx0-Y-5qxQDKtshunpPRQZx9sbOqSElK-_4BVa9G|${GOOGLE_SCRIPT_URL##*/}|g" "dist/$file.tmp2" > "dist/$file.tmp3"
+            sed "s|AKfycbwIrO65WVN82mm7dQKAguQ7WBl5PvDVN99iECj9e-ORVI5D-zxiCspXZhUZz0BvFcRNEQ|${GOOGLE_SCRIPT_URL##*/}|g" "dist/$file.tmp2" > "dist/$file.tmp3"
             sed "s|TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE|${GOOGLE_SCRIPT_API_KEY}|g" "dist/$file.tmp3" > "dist/$file"
             
             # Clean up temp files
