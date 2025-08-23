@@ -2,10 +2,10 @@
 // This should be placed in js/secure-config.js
 
 const SECURE_CONFIG = {
-  // API Configuration - Replace with your actual values
-  API_URL: 'https://script.google.com/macros/s/AKfycbwIrO65WVN82mm7dQKAguQ7WBl5PvDVN99iECj9e-ORVI5D-zxiCspXZhUZz0BvFcRNEQ/exec',
-  API_KEY: 'TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE',
-  ADMIN_KEY: 'TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE_ADMIN',
+  // API Configuration - These will be replaced during deployment
+  API_URL: 'PLACEHOLDER_SCRIPT_URL',
+  API_KEY: 'PLACEHOLDER_API_KEY',
+  ADMIN_KEY: 'PLACEHOLDER_ADMIN_KEY',
   
   // Security settings
   REQUEST_TIMEOUT: 15000, // 15 seconds
@@ -21,6 +21,21 @@ class SecureApiClient {
   constructor(config) {
     this.config = config;
     this.requestId = 0;
+    
+    // Validate configuration on initialization
+    if (!this.isConfigValid()) {
+      console.error('Invalid API configuration detected');
+      throw new Error('Configuration validation failed');
+    }
+  }
+
+  // Validate configuration
+  isConfigValid() {
+    return this.config.API_URL && 
+           this.config.API_URL !== 'PLACEHOLDER_SCRIPT_URL' &&
+           this.config.API_KEY && 
+           this.config.API_KEY !== 'PLACEHOLDER_API_KEY' &&
+           this.config.API_URL.includes('script.google.com');
   }
 
   // Generate request signature for additional security
@@ -501,11 +516,11 @@ const SecurityUtils = {
   validateEnvironment() {
     const issues = [];
 
-    if (!SECURE_CONFIG.API_URL || SECURE_CONFIG.API_URL.includes('YOUR_SCRIPT_ID')) {
+    if (!SECURE_CONFIG.API_URL || SECURE_CONFIG.API_URL === 'PLACEHOLDER_SCRIPT_URL') {
       issues.push('API URL not configured');
     }
 
-    if (!SECURE_CONFIG.API_KEY || SECURE_CONFIG.API_KEY.length < 20) {
+    if (!SECURE_CONFIG.API_KEY || SECURE_CONFIG.API_KEY === 'PLACEHOLDER_API_KEY') {
       issues.push('API key not properly configured');
     }
 
@@ -524,37 +539,59 @@ const SecurityUtils = {
 document.addEventListener('DOMContentLoaded', function() {
   // Validate environment
   const envCheck = SecurityUtils.validateEnvironment();
-  if (!envCheck.isValid && SECURE_CONFIG.DEBUG_MODE) {
-    console.warn('Environment issues detected:', envCheck.issues);
-    SecureNotificationSystem.show(
-      'Configuration issues detected. Check console for details.',
-      'warning'
-    );
+  if (!envCheck.isValid) {
+    if (SECURE_CONFIG.DEBUG_MODE) {
+      console.warn('Environment issues detected:', envCheck.issues);
+      SecureNotificationSystem.show(
+        'Configuration issues detected. Check console for details.',
+        'warning'
+      );
+    }
+    
+    // Show user-friendly error in production
+    if (SECURE_CONFIG.IS_PRODUCTION) {
+      SecureNotificationSystem.show(
+        'System temporarily unavailable. Please try again later.',
+        'error',
+        0 // Don't auto-hide
+      );
+      return;
+    }
   }
 
   // Initialize secure API client
-  window.secureApiClient = new SecureApiClient(SECURE_CONFIG);
-  
-  // Initialize form handler
-  window.secureFormHandler = new SecureFormHandler(window.secureApiClient);
+  try {
+    window.secureApiClient = new SecureApiClient(SECURE_CONFIG);
+    
+    // Initialize form handler
+    window.secureFormHandler = new SecureFormHandler(window.secureApiClient);
 
-  // Test connection if in debug mode
-  if (SECURE_CONFIG.DEBUG_MODE) {
-    window.secureApiClient.healthCheck()
-      .then(result => {
-        console.log('Health check passed:', result);
-        SecureNotificationSystem.show('Connection to server verified', 'success', 3000);
-      })
-      .catch(error => {
-        console.error('Health check failed:', error.message);
-        SecureNotificationSystem.show(
-          'Unable to connect to server. Please check your connection.',
-          'error'
-        );
-      });
+    // Test connection if in debug mode
+    if (SECURE_CONFIG.DEBUG_MODE) {
+      window.secureApiClient.healthCheck()
+        .then(result => {
+          console.log('Health check passed:', result);
+          SecureNotificationSystem.show('Connection to server verified', 'success', 3000);
+        })
+        .catch(error => {
+          console.error('Health check failed:', error.message);
+          SecureNotificationSystem.show(
+            'Unable to connect to server. Please check your connection.',
+            'error'
+          );
+        });
+    }
+
+    console.log('Secure configuration loaded successfully');
+    
+  } catch (error) {
+    console.error('Failed to initialize secure API client:', error.message);
+    SecureNotificationSystem.show(
+      'System initialization failed. Please refresh the page.',
+      'error',
+      0
+    );
   }
-
-  console.log('Secure configuration loaded successfully');
 });
 
 // Export for use in other files
