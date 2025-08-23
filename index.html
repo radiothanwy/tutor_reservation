@@ -25,24 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Include secure configuration -->
-    <script>
-        // Environment-specific configuration (would be injected by build process)
-        const ENVIRONMENT_CONFIG = {
-            GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwxMYgvr044jncgdJfYDzO-zh79Jx0-Y-5qxQDKtshunpPRQZx9sbOqSElK-_4BVa9G/exec',
-            GOOGLE_SCRIPT_API_KEY: 'TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE',
-            IS_PRODUCTION: window.location.hostname.includes('github.io')
-        };
-        
-        // Override process.env for client-side
-        if (typeof process === 'undefined') {
-            window.process = { 
-                env: {
-                    GOOGLE_SCRIPT_URL: ENVIRONMENT_CONFIG.GOOGLE_SCRIPT_URL,
-                    GOOGLE_SCRIPT_API_KEY: ENVIRONMENT_CONFIG.GOOGLE_SCRIPT_API_KEY
-                }
-            };
-        }
-    </script>
+    <script src="./js/secure-config.js"></script>
     
     <style>
         * {
@@ -659,375 +642,17 @@
         </div>
     </div>
 
-    <!-- Include the secure configuration script -->
+    <!-- Include form logic -->
     <script>
-        // SECURITY CONFIGURATION (inline for immediate availability)
-        const SECURE_CONFIG = {
-            API_URL: process.env.GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwxMYgvr044jncgdJfYDzO-zh79Jx0-Y-5qxQDKtshunpPRQZx9sbOqSElK-_4BVa9G/exec',
-            API_KEY: process.env.GOOGLE_SCRIPT_API_KEY || 'TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE',
-            REQUEST_TIMEOUT: 15000,
-            MAX_RETRIES: 3,
-            IS_PRODUCTION: window.location.hostname.includes('github.io') || window.location.protocol === 'https:',
-            DEBUG_MODE: !window.location.hostname.includes('github.io') && window.location.hostname !== 'localhost'
-        };
-
-        // SECURE API CLIENT (simplified inline version)
-        class SecureApiClient {
-            constructor(config) {
-                this.config = config;
-                this.requestId = 0;
-            }
-
-            async submitForm(formData) {
-                const requestData = {
-                    ...formData,
-                    timestamp: Date.now(),
-                    origin: window.location.origin,
-                    userAgent: navigator.userAgent.substring(0, 200)
-                };
-
-                const params = new URLSearchParams({
-                    apikey: this.config.API_KEY,
-                    data: encodeURIComponent(JSON.stringify(requestData)),
-                    callback: `secureCallback_${++this.requestId}_${Date.now()}`
-                });
-
-                return this.makeSecureJSONPRequest(`${this.config.API_URL}?${params.toString()}`);
-            }
-
-            makeSecureJSONPRequest(url) {
-                return new Promise((resolve, reject) => {
-                    const callbackMatch = url.match(/callback=([^&]+)/);
-                    const callbackName = callbackMatch[1];
-                    let timeoutId, script;
-
-                    timeoutId = setTimeout(() => {
-                        this.cleanup(callbackName, script, timeoutId);
-                        reject(new Error('Request timeout - please try again'));
-                    }, this.config.REQUEST_TIMEOUT);
-
-                    window[callbackName] = (response) => {
-                        this.cleanup(callbackName, script, timeoutId);
-                        
-                        if (response.success === false) {
-                            reject(new Error(response.error || 'Request failed'));
-                        } else {
-                            resolve(response);
-                        }
-                    };
-
-                    script = document.createElement('script');
-                    script.onerror = () => {
-                        this.cleanup(callbackName, script, timeoutId);
-                        reject(new Error('Network error - please check your connection'));
-                    };
-
-                    script.src = url;
-                    document.head.appendChild(script);
-                });
-            }
-
-            cleanup(callbackName, script, timeoutId) {
-                if (timeoutId) clearTimeout(timeoutId);
-                if (window[callbackName]) delete window[callbackName];
-                if (script && script.parentNode) {
-                    script.parentNode.removeChild(script);
-                }
-            }
-        }
-
-        // FORM HANDLER
-        class SecureFormHandler {
-            constructor(apiClient) {
-                this.apiClient = apiClient;
-                this.startTime = Date.now();
-                this.submissionAttempts = 0;
-                this.maxSubmissionAttempts = 3;
-            }
-
-            validateFormData(formData) {
-                const errors = [];
-
-                // Required fields
-                const requiredFields = {
-                    firstName: 'First name',
-                    lastName: 'Last name', 
-                    email: 'Email address',
-                    phone: 'Phone number',
-                    grade: 'Grade level',
-                    gender: 'Gender',
-                    englishLevel: 'English proficiency',
-                    preferredDays: 'Preferred days',
-                    preferredTime: 'Preferred time',
-                    sessionLength: 'Session length'
-                };
-
-                Object.entries(requiredFields).forEach(([field, label]) => {
-                    if (!formData[field] || !formData[field].toString().trim()) {
-                        errors.push(`${label} is required`);
-                    }
-                });
-
-                // Email validation
-                if (formData.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
-                    errors.push('Please enter a valid email address');
-                }
-
-                // Phone validation
-                if (formData.phone && !/^[\d\s\-\(\)\+]{10,}$/.test(formData.phone)) {
-                    errors.push('Please enter a valid phone number');
-                }
-
-                // Name validation
-                const nameRegex = /^[a-zA-Z\s\-'\.]{2,50}$/;
-                if (formData.firstName && !nameRegex.test(formData.firstName)) {
-                    errors.push('First name should only contain letters');
-                }
-                if (formData.lastName && !nameRegex.test(formData.lastName)) {
-                    errors.push('Last name should only contain letters');
-                }
-
-                // GPA validation
-                if (formData.gpa) {
-                    const gpa = parseFloat(formData.gpa);
-                    if (isNaN(gpa) || gpa < 0 || gpa > 4) {
-                        errors.push('GPA must be between 0.0 and 4.0');
-                    }
-                }
-
-                return {
-                    isValid: errors.length === 0,
-                    errors: errors
-                };
-            }
-
-            performSecurityChecks(formData) {
-                // Honeypot check
-                const honeypot = document.getElementById('website');
-                if (honeypot && honeypot.value !== '') {
-                    console.warn('Honeypot triggered');
-                    return { passed: false, reason: 'Security validation failed' };
-                }
-
-                // Timing check
-                const timeSpent = (Date.now() - this.startTime) / 1000;
-                if (timeSpent < 15) {
-                    return { passed: false, reason: 'Please take more time to complete the form carefully' };
-                }
-                if (timeSpent > 1800) {
-                    return { passed: false, reason: 'Form session expired. Please refresh and try again' };
-                }
-
-                // Rate limiting
-                this.submissionAttempts++;
-                if (this.submissionAttempts > this.maxSubmissionAttempts) {
-                    return { passed: false, reason: 'Too many attempts. Please refresh the page' };
-                }
-
-                // Terms agreement check
-                const termsCheckbox = document.getElementById('terms');
-                if (!termsCheckbox || !termsCheckbox.checked) {
-                    return { passed: false, reason: 'You must agree to the terms and conditions' };
-                }
-
-                return { passed: true };
-            }
-
-            sanitizeFormData(formData) {
-                const sanitized = {};
-                Object.entries(formData).forEach(([key, value]) => {
-                    if (typeof value === 'string') {
-                        sanitized[key] = value
-                            .trim()
-                            .replace(/<[^>]*>/g, '')
-                            .replace(/javascript:/gi, '')
-                            .substring(0, 500);
-                    } else {
-                        sanitized[key] = value;
-                    }
-                });
-                return sanitized;
-            }
-
-            async submitForm(formData) {
-                // Validation
-                const validation = this.validateFormData(formData);
-                if (!validation.isValid) {
-                    throw new Error(validation.errors.join(', '));
-                }
-
-                // Security checks
-                const securityCheck = this.performSecurityChecks(formData);
-                if (!securityCheck.passed) {
-                    throw new Error(securityCheck.reason);
-                }
-
-                // Sanitize and submit
-                const sanitizedData = this.sanitizeFormData(formData);
-                const submissionData = {
-                    ...sanitizedData,
-                    formTime: `${Math.floor((Date.now() - this.startTime) / 1000)} seconds`,
-                    submissionTime: new Date().toISOString()
-                };
-
-                return await this.apiClient.submitForm(submissionData);
-            }
-        }
-
-        // NOTIFICATION SYSTEM
-        function showNotification(message, type = 'info', duration = 5000) {
-            const existing = document.querySelectorAll('.secure-notification');
-            existing.forEach(el => el.remove());
-
-            const notification = document.createElement('div');
-            notification.className = `secure-notification secure-notification--${type}`;
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-${getNotificationIcon(type)}"></i>
-                    <span>${escapeHtml(message)}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: inherit; cursor: pointer; margin-left: auto; padding: 5px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-
-            const colors = {
-                success: 'linear-gradient(135deg, #28a745, #20c997)',
-                error: 'linear-gradient(135deg, #dc3545, #e83e8c)', 
-                warning: 'linear-gradient(135deg, #ffc107, #fd7e14)',
-                info: 'linear-gradient(135deg, #007bff, #6610f2)'
-            };
-
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 10000;
-                min-width: 300px;
-                max-width: 500px;
-                padding: 15px;
-                border-radius: 8px;
-                color: white;
-                font-weight: 500;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                animation: slideInRight 0.3s ease-out;
-                background: ${colors[type] || colors.info};
-            `;
-
-            document.body.appendChild(notification);
-
-            if (duration > 0) {
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.style.animation = 'slideOutRight 0.3s ease-in';
-                        setTimeout(() => notification.remove(), 300);
-                    }
-                }, duration);
-            }
-        }
-
-        function getNotificationIcon(type) {
-            const icons = {
-                success: 'check-circle',
-                error: 'exclamation-triangle',
-                warning: 'exclamation-circle',
-                info: 'info-circle'
-            };
-            return icons[type] || icons.info;
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Add notification animations
-        const animationStyles = document.createElement('style');
-        animationStyles.textContent = `
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOutRight {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(animationStyles);
-
-        // MODAL FUNCTIONS
-        function showTerms(event) {
-            event.preventDefault();
-            showModal('Terms & Conditions', `
-                <h3>Terms of Service</h3>
-                <p>By using our English tutoring reservation system, you agree to:</p>
-                <ul>
-                    <li>Provide accurate information in your reservation</li>
-                    <li>Attend scheduled sessions or provide 24-hour cancellation notice</li>
-                    <li>Respect our tutors and learning environment</li>
-                    <li>Pay agreed-upon fees for tutoring services</li>
-                </ul>
-                <h3>Cancellation Policy</h3>
-                <p>Cancellations must be made at least 24 hours in advance to avoid charges.</p>
-                <h3>Privacy</h3>
-                <p>We protect your personal information and use it solely for tutoring services.</p>
-            `);
-        }
-
-        function showPrivacy(event) {
-            event.preventDefault();
-            showModal('Privacy Policy', `
-                <h3>Information Collection</h3>
-                <p>We collect information you provide in the reservation form to:</p>
-                <ul>
-                    <li>Schedule and conduct tutoring sessions</li>
-                    <li>Contact you about your reservation</li>
-                    <li>Improve our services</li>
-                </ul>
-                <h3>Data Security</h3>
-                <p>Your data is protected with industry-standard security measures.</p>
-                <h3>Information Sharing</h3>
-                <p>We do not sell or share your personal information with third parties.</p>
-                <h3>Your Rights</h3>
-                <p>You can request access, correction, or deletion of your data at any time.</p>
-            `);
-        }
-
-        function showModal(title, content) {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10001;
-            `;
-            
-            modal.innerHTML = `
-                <div style="background: white; max-width: 600px; max-height: 80vh; overflow-y: auto; padding: 30px; border-radius: 10px; margin: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 style="color: var(--primary);">${title}</h2>
-                        <button onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-                    </div>
-                    <div>${content}</div>
-                    <div style="text-align: center; margin-top: 20px;">
-                        <button onclick="this.closest('.modal').remove()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
-                    </div>
-                </div>
-            `;
-            
-            modal.className = 'modal';
-            document.body.appendChild(modal);
-        }
-
         // MAIN FORM LOGIC
         document.addEventListener('DOMContentLoaded', function() {
+            // Check if secure config is loaded
+            if (typeof window.secureFormHandler === 'undefined') {
+                console.error('Security configuration not loaded');
+                alert('Security configuration failed to load. Please refresh the page.');
+                return;
+            }
+
             const formContainer = document.querySelector('.form-container');
             const steps = document.querySelectorAll('.form-step');
             const progressSteps = document.querySelectorAll('.progress-step');
@@ -1038,16 +663,12 @@
             const timerDisplay = document.getElementById('formTimer');
             const loadingOverlay = document.getElementById('loadingOverlay');
 
-            // Initialize secure client and form handler
-            const apiClient = new SecureApiClient(SECURE_CONFIG);
-            const formHandler = new SecureFormHandler(apiClient);
-
             // Progress bar setup
             progressBar.style.setProperty('--progress-width', '0%');
 
             // Form timer
             let timerInterval = setInterval(() => {
-                const seconds = Math.floor((Date.now() - formHandler.startTime) / 1000);
+                const seconds = Math.floor((Date.now() - window.secureFormHandler.startTime) / 1000);
                 if (timerDisplay) timerDisplay.textContent = seconds;
             }, 1000);
 
@@ -1127,7 +748,7 @@
                         const nextStep = parseInt(this.dataset.next);
                         goToStep(nextStep);
                     } else {
-                        showNotification('Please fill in all required fields correctly', 'error');
+                        SecureNotificationSystem.show('Please fill in all required fields correctly', 'error');
                     }
                 });
             });
@@ -1144,7 +765,7 @@
                 e.preventDefault();
 
                 if (!validateStep(3)) {
-                    showNotification('Please complete all required fields', 'error');
+                    SecureNotificationSystem.show('Please complete all required fields', 'error');
                     return;
                 }
 
@@ -1171,7 +792,7 @@
                 loadingOverlay.style.display = 'flex';
 
                 try {
-                    const result = await formHandler.submitForm(formData);
+                    const result = await window.secureFormHandler.submitForm(formData);
                     
                     // Clear timer
                     clearInterval(timerInterval);
@@ -1209,11 +830,11 @@
                         </div>
                     `;
 
-                    showNotification('Reservation submitted successfully!', 'success');
+                    SecureNotificationSystem.show('Reservation submitted successfully!', 'success');
 
                 } catch (error) {
                     console.error('Submission error:', error);
-                    showNotification(error.message || 'Failed to submit reservation. Please try again.', 'error');
+                    SecureNotificationSystem.show(error.message || 'Failed to submit reservation. Please try again.', 'error');
                 } finally {
                     // Hide loading
                     loadingOverlay.style.display = 'none';
@@ -1231,30 +852,77 @@
                     }
                 });
             });
-
-            // Environment check
-            if (!SECURE_CONFIG.IS_PRODUCTION && SECURE_CONFIG.DEBUG_MODE) {
-                console.log('Debug mode enabled. Security config:', SECURE_CONFIG);
-            }
-
-            // Connection test
-            if (SECURE_CONFIG.DEBUG_MODE) {
-                const testBtn = document.createElement('button');
-                testBtn.textContent = 'Test Connection';
-                testBtn.style.cssText = 'position: fixed; bottom: 10px; right: 10px; z-index: 9999; padding: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;';
-                testBtn.onclick = async () => {
-                    try {
-                        showNotification('Testing connection...', 'info');
-                        // Simple connection test by making a health check
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        showNotification('Connection test passed', 'success');
-                    } catch (error) {
-                        showNotification('Connection test failed: ' + error.message, 'error');
-                    }
-                };
-                document.body.appendChild(testBtn);
-            }
         });
+
+        // MODAL FUNCTIONS
+        function showTerms(event) {
+            event.preventDefault();
+            showModal('Terms & Conditions', `
+                <h3>Terms of Service</h3>
+                <p>By using our English tutoring reservation system, you agree to:</p>
+                <ul>
+                    <li>Provide accurate information in your reservation</li>
+                    <li>Attend scheduled sessions or provide 24-hour cancellation notice</li>
+                    <li>Respect our tutors and learning environment</li>
+                    <li>Pay agreed-upon fees for tutoring services</li>
+                </ul>
+                <h3>Cancellation Policy</h3>
+                <p>Cancellations must be made at least 24 hours in advance to avoid charges.</p>
+                <h3>Privacy</h3>
+                <p>We protect your personal information and use it solely for tutoring services.</p>
+            `);
+        }
+
+        function showPrivacy(event) {
+            event.preventDefault();
+            showModal('Privacy Policy', `
+                <h3>Information Collection</h3>
+                <p>We collect information you provide in the reservation form to:</p>
+                <ul>
+                    <li>Schedule and conduct tutoring sessions</li>
+                    <li>Contact you about your reservation</li>
+                    <li>Improve our services</li>
+                </ul>
+                <h3>Data Security</h3>
+                <p>Your data is protected with industry-standard security measures.</p>
+                <h3>Information Sharing</h3>
+                <p>We do not sell or share your personal information with third parties.</p>
+                <h3>Your Rights</h3>
+                <p>You can request access, correction, or deletion of your data at any time.</p>
+            `);
+        }
+
+        function showModal(title, content) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10001;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: white; max-width: 600px; max-height: 80vh; overflow-y: auto; padding: 30px; border-radius: 10px; margin: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: var(--primary);">${title}</h2>
+                        <button onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+                    </div>
+                    <div>${content}</div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button onclick="this.closest('.modal').remove()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            modal.className = 'modal';
+            document.body.appendChild(modal);
+        }
     </script>
 </body>
 </html>
