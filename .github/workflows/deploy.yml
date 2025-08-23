@@ -25,15 +25,18 @@ jobs:
     
     - name: Security Audit
       run: |
-        # Check for hardcoded secrets
-        if grep -r "AKfycb" --include="*.html" --include="*.js" .; then
-          echo "❌ Hardcoded script URLs found!"
+        # Check for hardcoded secrets in source files (before build)
+        if grep -r "AKfycb" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
+          echo "❌ Hardcoded script URLs found in source files!"
+          echo "Please use environment variables or placeholders instead."
           exit 1
         fi
         
-        # Check for API keys
-        if grep -r "TUT2024_" --include="*.html" --include="*.js" .; then
-          echo "⚠️  Potential API keys in code - verify they're for examples only"
+        # Check for hardcoded API keys in source files
+        if grep -r "TUT2024_SECURE_KEY" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
+          echo "⚠️  Hardcoded API keys found in source files!"
+          echo "Please use environment variables or placeholders instead."
+          exit 1
         fi
         
         echo "✅ Security scan passed"
@@ -75,11 +78,8 @@ jobs:
           if [ -f "$file" ]; then
             echo "Processing $file..."
             
-            # Replace environment placeholders
-            sed "s|process\.env\.GOOGLE_SCRIPT_URL.*|'${GOOGLE_SCRIPT_URL}'|g" "$file" > "dist/$file.tmp"
-            sed "s|process\.env\.GOOGLE_SCRIPT_API_KEY.*|'${GOOGLE_SCRIPT_API_KEY}'|g" "dist/$file.tmp" > "dist/$file.tmp2"
-            sed "s|AKfycbwIrO65WVN82mm7dQKAguQ7WBl5PvDVN99iECj9e-ORVI5D-zxiCspXZhUZz0BvFcRNEQ|${GOOGLE_SCRIPT_URL##*/}|g" "dist/$file.tmp2" > "dist/$file.tmp3"
-            sed "s|TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE|${GOOGLE_SCRIPT_API_KEY}|g" "dist/$file.tmp3" > "dist/$file"
+            # Replace environment placeholders with more robust approach
+            cp "$file" "dist/$file"
             
             # Replace the hardcoded Google Script URL if GOOGLE_SCRIPT_URL is provided
             if [ -n "$GOOGLE_SCRIPT_URL" ]; then
