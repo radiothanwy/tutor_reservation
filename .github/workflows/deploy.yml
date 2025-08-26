@@ -66,7 +66,7 @@ jobs:
 
         echo "🔄 Replacing placeholders..."
 
-        # Replace in all HTML
+        # Replace in HTML
         find dist -name "*.html" -type f | while read file; do
           sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" "$file"
           sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" "$file"
@@ -78,9 +78,16 @@ jobs:
           sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" dist/js/secure-config.js
           sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" dist/js/secure-config.js
           sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" dist/js/secure-config.js
+        else
+          echo "❌ dist/js/secure-config.js not found"
         fi
 
         echo "✅ Placeholders replaced"
+
+        # Debug: show first lines of secure-config.js
+        echo "----- secure-config.js preview -----"
+        head -n 15 dist/js/secure-config.js || echo "secure-config.js missing!"
+        echo "-----------------------------------"
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
