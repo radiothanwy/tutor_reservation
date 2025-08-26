@@ -540,23 +540,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Validate environment
   const envCheck = SecurityUtils.validateEnvironment();
   if (!envCheck.isValid) {
-    if (SECURE_CONFIG.DEBUG_MODE) {
-      console.warn('Environment issues detected:', envCheck.issues);
-      SecureNotificationSystem.show(
-        'Configuration issues detected. Check console for details.',
-        'warning'
-      );
-    }
+    console.warn('Environment issues detected:', envCheck.issues);
     
-    // Show user-friendly error in production
-    if (SECURE_CONFIG.IS_PRODUCTION) {
-      SecureNotificationSystem.show(
-        'System temporarily unavailable. Please try again later.',
-        'error',
-        0 // Don't auto-hide
-      );
-      return;
-    }
+    // ✅ Show warning but DO NOT return
+    SecureNotificationSystem.show(
+      'Running with warnings: ' + envCheck.issues.join(', '),
+      'warning',
+      6000
+    );
   }
 
   // Initialize secure API client
@@ -593,6 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
     );
   }
 });
+
 
 // Export for use in other files
 if (typeof module !== 'undefined' && module.exports) {
