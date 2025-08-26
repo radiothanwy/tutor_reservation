@@ -6,13 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
-# CRITICAL: Set permissions for GitHub Pages deployment
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -25,18 +23,14 @@ jobs:
     
     - name: Security Audit
       run: |
-        # Check for hardcoded script URLs
         if grep -r "AKfycb" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
-          echo "❌ Hardcoded script URLs found in source files!"
+          echo "❌ Hardcoded script URLs found!"
           exit 1
         fi
-        
-        # Check for hardcoded API keys
         if grep -r "TUT2024_SECURE_KEY" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
-          echo "❌ Hardcoded API keys found in source files!"
+          echo "❌ Hardcoded API keys found!"
           exit 1
         fi
-        
         echo "✅ Security scan passed"
 
   build-and-deploy:
@@ -68,46 +62,26 @@ jobs:
         GOOGLE_SCRIPT_ADMIN_KEY: ${{ secrets.GOOGLE_SCRIPT_ADMIN_KEY }}
       run: |
         mkdir -p dist
-
-        # Copy all project files into dist
         cp -r * dist/ || true
 
-        # Replace placeholders in HTML files
-        for file in dist/*.html; do
-          if [ -f "$file" ]; then
-            sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" "$file"
-            sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" "$file"
-            sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" "$file"
-          fi
+        echo "🔄 Replacing placeholders..."
+
+        # Replace in all HTML
+        find dist -name "*.html" -type f | while read file; do
+          sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" "$file"
+          sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" "$file"
+          sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" "$file"
         done
 
-        # Replace placeholders in JS config
+        # Replace in secure-config.js
         if [ -f "dist/js/secure-config.js" ]; then
           sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" dist/js/secure-config.js
           sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" dist/js/secure-config.js
           sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" dist/js/secure-config.js
         fi
 
-        echo "✅ Environment variables injected"
-        
-        # Copy assets if exist
-        cp -r assets dist/ 2>/dev/null || echo "No assets directory found"
-        cp -r images dist/ 2>/dev/null || echo "No images directory found"
-        cp -r css dist/ 2>/dev/null || echo "No css directory found"
-        cp -r js dist/ 2>/dev/null || echo "No js directory found"
-        
-        echo "✅ Build completed"
-        
-    - name: Security Headers Check
-      run: |
-        echo "Checking for security headers..."
-        for file in dist/*.html; do
-          if [ -f "$file" ] && grep -q "Content-Security-Policy\|meta.*http-equiv" "$file"; then
-            echo "✅ Security headers found in $file"
-          fi
-        done
-        echo "✅ Security headers verification completed"
-        
+        echo "✅ Placeholders replaced"
+
     - name: Setup Pages
       uses: actions/configure-pages@v4
       
@@ -125,7 +99,4 @@ jobs:
       run: |
         echo "🔒 Deployment Security Report"
         echo "✅ Environment variables injected securely"
-        echo "✅ No secrets exposed in repository"
-        echo "✅ HTTPS enforced by GitHub Pages"
-        echo "✅ Rate limiting configured in Google Apps Script"
         echo "🚀 Deployment completed successfully"
