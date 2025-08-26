@@ -21,21 +21,19 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4  # Updated to v4
+    - uses: actions/checkout@v4
     
     - name: Security Audit
       run: |
-        # Check for hardcoded secrets in source files (before build)
+        # Check for hardcoded script URLs
         if grep -r "AKfycb" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
           echo "❌ Hardcoded script URLs found in source files!"
-          echo "Please use environment variables or placeholders instead."
           exit 1
         fi
         
-        # Check for hardcoded API keys in source files
+        # Check for hardcoded API keys
         if grep -r "TUT2024_SECURE_KEY" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
-          echo "⚠️  Hardcoded API keys found in source files!"
-          echo "Please use environment variables or placeholders instead."
+          echo "❌ Hardcoded API keys found in source files!"
           exit 1
         fi
         
@@ -45,19 +43,18 @@ jobs:
     needs: security-scan
     runs-on: ubuntu-latest
     
-    # CRITICAL: Set up GitHub Pages environment
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: Checkout
-      uses: actions/checkout@v4  # Updated to v4
+      uses: actions/checkout@v4
       
     - name: Setup Node.js
-      uses: actions/setup-node@v4  # Updated to v4
+      uses: actions/setup-node@v4
       with:
-        node-version: '20'  # Updated to Node 20 (LTS)
+        node-version: '20'
         
     - name: Install dependencies
       run: |
@@ -70,46 +67,39 @@ jobs:
         GOOGLE_SCRIPT_API_KEY: ${{ secrets.GOOGLE_SCRIPT_API_KEY }}
         GOOGLE_SCRIPT_ADMIN_KEY: ${{ secrets.GOOGLE_SCRIPT_ADMIN_KEY }}
       run: |
-        # Create build directory
         mkdir -p dist
-        
-        # Process HTML files and inject environment variables
-        for file in *.html; do
+
+        # Copy all project files into dist
+        cp -r * dist/ || true
+
+        # Replace placeholders in HTML files
+        for file in dist/*.html; do
           if [ -f "$file" ]; then
-            echo "Processing $file..."
-            
-            # Replace environment placeholders with more robust approach
-            cp "$file" "dist/$file"
-            
-            # Replace the hardcoded Google Script URL if GOOGLE_SCRIPT_URL is provided
-            if [ -n "$GOOGLE_SCRIPT_URL" ]; then
-              sed -i "s|https://script.google.com/macros/s/[^/]*/exec|${GOOGLE_SCRIPT_URL}|g" "dist/$file"
-            fi
-            
-            # Replace API key placeholder if provided
-            if [ -n "$GOOGLE_SCRIPT_API_KEY" ]; then
-              sed -i "s|TUT2024_SECURE_KEY_9x7B3mQ8pL5nR2wE|${GOOGLE_SCRIPT_API_KEY}|g" "dist/$file"
-            fi
-            
-            echo "✅ Processed $file"
+            sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" "$file"
+            sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" "$file"
+            sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" "$file"
           fi
         done
+
+        # Replace placeholders in JS config
+        if [ -f "dist/js/secure-config.js" ]; then
+          sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" dist/js/secure-config.js
+          sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" dist/js/secure-config.js
+          sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" dist/js/secure-config.js
+        fi
+
+        echo "✅ Environment variables injected"
         
-        # Copy CSS, JS, and other assets
+        # Copy assets if exist
         cp -r assets dist/ 2>/dev/null || echo "No assets directory found"
         cp -r images dist/ 2>/dev/null || echo "No images directory found"
         cp -r css dist/ 2>/dev/null || echo "No css directory found"
         cp -r js dist/ 2>/dev/null || echo "No js directory found"
         
-        # Copy any standalone CSS/JS files
-        cp *.css dist/ 2>/dev/null || true
-        cp *.js dist/ 2>/dev/null || true
-        
         echo "✅ Build completed"
         
     - name: Security Headers Check
       run: |
-        # Verify CSP headers are present (if any HTML files have them)
         echo "Checking for security headers..."
         for file in dist/*.html; do
           if [ -f "$file" ] && grep -q "Content-Security-Policy\|meta.*http-equiv" "$file"; then
@@ -119,17 +109,17 @@ jobs:
         echo "✅ Security headers verification completed"
         
     - name: Setup Pages
-      uses: actions/configure-pages@v4  # Updated to v4
+      uses: actions/configure-pages@v4
       
     - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3  # Updated to v3
+      uses: actions/upload-pages-artifact@v3
       with:
         path: './dist'
         
     - name: Deploy to GitHub Pages
       id: deployment
-      if: github.ref == 'refs/heads/main'  # Only deploy from main branch
-      uses: actions/deploy-pages@v4  # Use the official GitHub Pages action
+      if: github.ref == 'refs/heads/main'
+      uses: actions/deploy-pages@v4
       
     - name: Security Report
       run: |
