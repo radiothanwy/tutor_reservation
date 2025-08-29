@@ -579,7 +579,7 @@
             }
 
             // Check if the admin key matches the expected format
-            if (adminKey !== SECURE_CONFIG.ADMIN_KEY) {
+            if (adminKey !==  SECURE_CONFIG.ADMIN_KEY ) {
                 showAuthError('Invalid admin key. Access denied.');
                 return;
             }
@@ -863,5 +863,9 @@
             `;
         }
     </script>
+
+<script>
+console.log("[secure-dashboard.html] Simplified secure client active - no API keys required.");
+</script>
 </body>
 </html>
