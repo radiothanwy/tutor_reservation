@@ -62,7 +62,8 @@ jobs:
         GOOGLE_SCRIPT_ADMIN_KEY: ${{ secrets.GOOGLE_SCRIPT_ADMIN_KEY }}
       run: |
         mkdir -p dist
-        cp -r * dist/ || true
+        shopt -s extglob
+        cp -r !(dist|node_modules|.git) dist/ || true
 
         echo "🔄 Replacing placeholders..."
 
@@ -84,9 +85,9 @@ jobs:
 
         echo "✅ Placeholders replaced"
 
-        # Debug: show first lines of secure-config.js
-        echo "----- secure-config.js preview -----"
-        head -n 15 dist/js/secure-config.js || echo "secure-config.js missing!"
+        # Debug: show injected values
+        echo "----- secure-config.js after replacement -----"
+        grep -E "API_URL|API_KEY|ADMIN_KEY" dist/js/secure-config.js || echo "No matches found!"
         echo "-----------------------------------"
 
     - name: Setup Pages
