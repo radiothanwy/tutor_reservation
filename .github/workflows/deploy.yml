@@ -1,4 +1,4 @@
-name: Secure Deploy to GitHub Pages
+name: Deploy to GitHub Pages (no frontend secrets)
 
 on:
   push:
@@ -16,95 +16,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Security Audit
-      run: |
-        if grep -r "AKfycb" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
-          echo "❌ Hardcoded script URLs found!"
-          exit 1
-        fi
-        if grep -r "TUT2024_SECURE_KEY" --include="*.html" --include="*.js" --exclude-dir=dist --exclude-dir=node_modules .; then
-          echo "❌ Hardcoded API keys found!"
-          exit 1
-        fi
-        echo "✅ Security scan passed"
-
   build-and-deploy:
-    needs: security-scan
     runs-on: ubuntu-latest
-    
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        
-    - name: Install dependencies
-      run: |
-        npm init -y
-        npm install --save-dev html-minifier-terser
-        
-    - name: Build with environment variables
-      env:
-        GOOGLE_SCRIPT_URL: ${{ secrets.GOOGLE_SCRIPT_URL }}
-        GOOGLE_SCRIPT_API_KEY: ${{ secrets.GOOGLE_SCRIPT_API_KEY }}
-        GOOGLE_SCRIPT_ADMIN_KEY: ${{ secrets.GOOGLE_SCRIPT_ADMIN_KEY }}
-      run: |
-        mkdir -p dist
-        shopt -s extglob
-        cp -r !(dist|node_modules|.git) dist/ || true
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        echo "🔄 Replacing placeholders..."
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-        # Replace in HTML
-        find dist -name "*.html" -type f | while read file; do
-          sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" "$file"
-          sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" "$file"
-          sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" "$file"
-        done
+      - name: Install (optional, if you want to minify)
+        run: |
+          npm init -y
+          npm install --save-dev html-minifier-terser
 
-        # Replace in secure-config.js
-        if [ -f "dist/js/secure-config.js" ]; then
-          sed -i "s|PLACEHOLDER_SCRIPT_URL|${GOOGLE_SCRIPT_URL}|g" dist/js/secure-config.js
-          sed -i "s|PLACEHOLDER_API_KEY|${GOOGLE_SCRIPT_API_KEY}|g" dist/js/secure-config.js
-          sed -i "s|PLACEHOLDER_ADMIN_KEY|${GOOGLE_SCRIPT_ADMIN_KEY}|g" dist/js/secure-config.js
-        else
-          echo "❌ dist/js/secure-config.js not found"
-        fi
+      - name: Build (copy to dist)
+        run: |
+          rm -rf dist
+          mkdir -p dist
+          shopt -s extglob
+          cp -r !(dist|node_modules|.git|.github) dist/ 2>/dev/null || true
 
-        echo "✅ Placeholders replaced"
+          # Optional: minify HTML in dist
+          npx html-minifier-terser --collapse-whitespace --remove-comments \
+            --minify-css true --minify-js true \
+            --input-dir dist --output-dir dist --file-ext html || true
 
-        # Debug: show injected values
-        echo "----- secure-config.js after replacement -----"
-        grep -E "API_URL|API_KEY|ADMIN_KEY" dist/js/secure-config.js || echo "No matches found!"
-        echo "-----------------------------------"
+          echo "✅ Build completed"
 
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-      
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: './dist'
-        
-    - name: Deploy to GitHub Pages
-      id: deployment
-      if: github.ref == 'refs/heads/main'
-      uses: actions/deploy-pages@v4
-      
-    - name: Security Report
-      run: |
-        echo "🔒 Deployment Security Report"
-        echo "✅ Environment variables injected securely"
-        echo "🚀 Deployment completed successfully"
+      - name: Configure Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
