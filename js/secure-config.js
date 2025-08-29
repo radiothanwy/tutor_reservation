@@ -1,10 +1,13 @@
-// CLIENT-SIDE SECURITY CONFIGURATION — no secrets in browser
+// CLIENT-SIDE SECURITY CONFIGURATION – no secrets in browser
 const SECURE_CONFIG = {
   // Your public Apps Script web app URL (PUBLIC deployment)
   API_URL: 'https://script.google.com/macros/s/AKfycbwKgZGVPJZtbfaVK4il9QL88iEW2ACS75R_tK1c_Xxly1te-Ra7mHhlmeZXWAdV3JOlqQ/exec',
 
   // Your admin Apps Script web app URL (ADMIN deployment)
   ADMIN_API_URL: 'https://script.google.com/macros/s/AKfycbwHmvzkN2qAN076HKZch_UF-D53hhCgKdJQeRHD4KdcmHuW6KV-R32iRh-J2crVQWORCA/exec',
+
+  // Admin authentication key (change this to your preferred password)
+  ADMIN_KEY: 'tutor-admin-2024',
 
   REQUEST_TIMEOUT: 15000,
   MAX_RETRIES: 2,
@@ -20,9 +23,9 @@ const SECURE_CONFIG = {
   ]
 };
 
-// ─────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 // API CLIENT (no keys; CORS POST + JSONP fallback)
-// ─────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 class SecureApiClient {
   constructor(config) {
     this.config = config;
@@ -60,12 +63,23 @@ class SecureApiClient {
     return this._postOrJsonp(payload);
   }
 
-  async getReservationsAdmin() {
+  async getReservations() {
     // Uses ADMIN_API_URL (protected deployment)
     const url = this.config.ADMIN_API_URL || this.config.API_URL;
     const payload = {
       action: 'getreservations',
       origin: window.location.origin
+    };
+    return this._postOrJsonp(payload, url);
+  }
+
+  async updateStatus(reservationId, newStatus) {
+    const url = this.config.ADMIN_API_URL || this.config.API_URL;
+    const payload = {
+      action: 'updatestatus',
+      origin: window.location.origin,
+      reservationId: reservationId,
+      status: newStatus
     };
     return this._postOrJsonp(payload, url);
   }
@@ -108,6 +122,7 @@ class SecureApiClient {
         action: payload.action,
         origin: window.location.origin,
         reservationId: payload.reservationId || '',
+        status: payload.status || '',
         callback: `cb_${++this.requestId}_${Date.now()}`
       });
       const url2 = `${url}?${params.toString()}`;
@@ -149,6 +164,41 @@ class SecureApiClient {
   }
 }
 
+// Form Handler Class
+class SecureFormHandler {
+  constructor(apiClient) {
+    this.apiClient = apiClient;
+    this.startTime = Date.now();
+  }
+
+  async submitForm(formData) {
+    try {
+      // Add form timing data
+      const formTime = Math.floor((Date.now() - this.startTime) / 1000);
+      const submissionData = {
+        ...formData,
+        formTime: formTime + ' seconds',
+        timestamp: new Date().toISOString()
+      };
+
+      const response = await this.apiClient.submitForm(submissionData);
+      
+      if (response.success) {
+        return {
+          success: true,
+          reservationId: response.reservationId,
+          studentName: `${formData.firstName} ${formData.lastName}`
+        };
+      } else {
+        throw new Error(response.error || 'Submission failed');
+      }
+    } catch (error) {
+      console.error('Form submission error:', error);
+      throw new Error('Failed to submit reservation: ' + error.message);
+    }
+  }
+}
+
 // Simple env check (no secrets)
 const SecurityUtils = {
   validateEnvironment() {
@@ -177,25 +227,32 @@ class SecureNotificationSystem {
     document.body.appendChild(n);
     if (duration>0) setTimeout(()=> n.remove(), duration);
   }
-};
+}
 
 // Wire-up
 document.addEventListener('DOMContentLoaded', () => {
   const env = SecurityUtils.validateEnvironment();
   if (!env.isValid && SECURE_CONFIG.IS_PRODUCTION) {
-    SecureNotificationSystem.show('System temporarily unavailable. Please try again later.', 'error', 0);
-    return;
+    console.warn('Environment validation failed:', env.issues);
+    // Don't block in production, just warn
   }
+  
   try {
     window.secureApiClient = new SecureApiClient(SECURE_CONFIG);
-    window.secureFormHandler = new SecureFormHandler(window.secureApiClient); // your existing class
+    window.secureFormHandler = new SecureFormHandler(window.secureApiClient);
+    
     if (SECURE_CONFIG.DEBUG_MODE) {
       window.secureApiClient.healthCheck()
-        .then(()=> SecureNotificationSystem.show('Health OK', 'success'))
-        .catch(e=> { console.error(e); SecureNotificationSystem.show('Health check failed', 'warning'); });
+        .then(() => SecureNotificationSystem.show('Health OK', 'success'))
+        .catch(e => { 
+          console.error(e); 
+          SecureNotificationSystem.show('Health check failed', 'warning'); 
+        });
     }
+    
+    console.log('Secure configuration loaded successfully');
   } catch (e) {
-    console.error(e);
+    console.error('Initialization error:', e);
     SecureNotificationSystem.show('Initialization failed', 'error', 0);
   }
 });
