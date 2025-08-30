@@ -4,7 +4,7 @@
 const SECURE_CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbw3K5qiRPQ9_m08Zp6kAmrp0F0qFj8laVPxIMWmZHDQYp7Xc7PvNxTkelZkVKDJpTRzPQ/exec',
   ADMIN_API_URL: 'https://script.google.com/macros/s/AKfycbyK00YoLWuDF_qidRgV_jyZurrqx_VW1KKVTaSuGqVhJSx6iVCWLVx83j0odXgohWZtXg/exec',
-  ADMIN_KEY: 'tutor-admin-2024',
+  ADMIN_KEY: 'thoraya2025',
   REQUEST_TIMEOUT: 15000,
   MAX_RETRIES: 3,
   IS_PRODUCTION: window.location.hostname.includes('github.io'),
