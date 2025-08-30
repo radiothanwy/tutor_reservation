@@ -1,224 +1,153 @@
-// CLIENT-SIDE SECURITY CONFIGURATION – no secrets in browser
+// COMPLETE REPLACEMENT for your secure-config.js
+// This version bypasses CORS issues entirely by using JSONP for everything
+
 const SECURE_CONFIG = {
-  // Your public Apps Script web app URL (PUBLIC deployment)
-  API_URL: 'https://script.google.com/macros/s/AKfycbwZrmAHDuIcUJqzAGSCeP6B4K84_Bf5dal1XNBS9NnifzbkSdSZW38MpkOzJhNW4Do8yw/exec',
-
-  // Your admin Apps Script web app URL (ADMIN deployment)
-  ADMIN_API_URL: 'https://script.google.com/macros/s/AKfycbxShiazacyM4BLES66Ky9CHWJLt4b7TzC7n4Kx586kmN_N-xca1_B1jB5-pEx-8IxbkiA/exec',
-
-  // Admin authentication key (change this to your preferred password)
+  API_URL: 'https://script.google.com/macros/s/AKfycbw3K5qiRPQ9_m08Zp6kAmrp0F0qFj8laVPxIMWmZHDQYp7Xc7PvNxTkelZkVKDJpTRzPQ/exec',
+  ADMIN_API_URL: 'https://script.google.com/macros/s/AKfycbyK00YoLWuDF_qidRgV_jyZurrqx_VW1KKVTaSuGqVhJSx6iVCWLVx83j0odXgohWZtXg/exec',
   ADMIN_KEY: 'tutor-admin-2024',
-
-  REQUEST_TIMEOUT: 20000, // Increased timeout
+  REQUEST_TIMEOUT: 15000,
   MAX_RETRIES: 3,
-
-  // Environment detection
-  IS_PRODUCTION: window.location.hostname.includes('github.io') || window.location.protocol === 'https:',
-  DEBUG_MODE: !window.location.hostname.includes('github.io') && window.location.hostname !== 'localhost',
-
-  // Allowed hostnames (client-side soft check)
+  IS_PRODUCTION: window.location.hostname.includes('github.io'),
+  DEBUG_MODE: !window.location.hostname.includes('github.io'),
   ALLOWED_ORIGINS: [
     'https://radiothanwy.github.io',
     'https://radiothanwy.github.io/tutor_reservation'
   ]
 };
 
-// ────────────────────────────────────────────────────────────────
-// ENHANCED API CLIENT with better CORS handling
-// ────────────────────────────────────────────────────────────────
+// SIMPLIFIED API CLIENT - JSONP ONLY (no CORS issues)
 class SecureApiClient {
   constructor(config) {
     this.config = config;
     this.requestId = 0;
-
-    if (!this.isConfigValid()) {
-      console.error('Invalid configuration:', this.config.API_URL);
-      throw new Error('Configuration validation failed');
-    }
-  }
-
-  isConfigValid() {
-    return Boolean(
-      this.config.API_URL &&
-      this.config.API_URL.startsWith('https://script.google.com/macros/s/')
-    );
+    console.log('SecureApiClient initialized with config:', config.API_URL);
   }
 
   async submitForm(formData) {
-    const payload = {
+    console.log('Submitting form data:', formData);
+    
+    // Build URL with all form data as query parameters
+    const params = new URLSearchParams({
       action: 'submitform',
       origin: window.location.origin,
-      data: await this._augment(formData)
-    };
-    return this._makeRequest(payload);
+      firstName: formData.firstName || '',
+      lastName: formData.lastName || '',
+      email: formData.email || '',
+      phone: formData.phone || '',
+      grade: formData.grade || '',
+      gender: formData.gender || '',
+      englishLevel: formData.englishLevel || '',
+      preferredDays: formData.preferredDays || '',
+      preferredTime: formData.preferredTime || '',
+      sessionLength: formData.sessionLength || '',
+      gpa: formData.gpa || '',
+      learningGoals: (formData.learningGoals || '').substring(0, 200),
+      referral: formData.referral || '',
+      userAgent: navigator.userAgent.substring(0, 100),
+      formTime: formData.formTime || '',
+      timestamp: new Date().toISOString()
+    });
+
+    const url = `${this.config.API_URL}?${params.toString()}`;
+    return this._jsonp(url);
   }
 
   async queryReservation(reservationId) {
-    const clean = String(reservationId || '').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 20);
-    const payload = {
+    const clean = String(reservationId || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const params = new URLSearchParams({
       action: 'queryreservation',
       origin: window.location.origin,
       reservationId: clean
-    };
-    return this._makeRequest(payload);
+    });
+    
+    const url = `${this.config.API_URL}?${params.toString()}`;
+    return this._jsonp(url);
   }
 
   async getReservations() {
-    // Uses ADMIN_API_URL (protected deployment)
-    const url = this.config.ADMIN_API_URL || this.config.API_URL;
-    const payload = {
+    const params = new URLSearchParams({
       action: 'getreservations',
       origin: window.location.origin
-    };
-    return this._makeRequest(payload, url);
+    });
+    
+    const url = `${this.config.ADMIN_API_URL}?${params.toString()}`;
+    return this._jsonp(url);
   }
 
   async updateStatus(reservationId, newStatus) {
-    const url = this.config.ADMIN_API_URL || this.config.API_URL;
-    const payload = {
+    const params = new URLSearchParams({
       action: 'updatestatus',
       origin: window.location.origin,
       reservationId: reservationId,
       status: newStatus
-    };
-    return this._makeRequest(payload, url);
+    });
+    
+    const url = `${this.config.ADMIN_API_URL}?${params.toString()}`;
+    return this._jsonp(url);
   }
 
   async healthCheck() {
-    try {
-      const url = `${this.config.API_URL}?action=health&origin=${encodeURIComponent(window.location.origin)}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        credentials: 'omit'
-      });
-      return await response.json();
-    } catch (error) {
-      console.warn('Health check failed:', error);
-      return { success: false, error: error.message };
-    }
+    const params = new URLSearchParams({
+      action: 'health',
+      origin: window.location.origin
+    });
+    
+    const url = `${this.config.API_URL}?${params.toString()}`;
+    return this._jsonp(url);
   }
 
-  // Enhanced request method with better error handling
-  async _makeRequest(payload, urlOverride) {
-    const url = urlOverride || this.config.API_URL;
-    let lastError;
-
-    // Strategy 1: Try POST with CORS
-    try {
-      console.log('Attempting POST request to:', url);
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.config.REQUEST_TIMEOUT);
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-        mode: 'cors',
-        credentials: 'omit'
-      });
-      
-      clearTimeout(timeout);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      console.log('POST successful:', result);
-      return result;
-      
-    } catch (postError) {
-      console.warn('POST failed, trying JSONP fallback:', postError);
-      lastError = postError;
-    }
-
-    // Strategy 2: JSONP Fallback
-    try {
-      console.log('Attempting JSONP fallback');
-      return await this._jsonpRequest(payload, url);
-    } catch (jsonpError) {
-      console.error('JSONP also failed:', jsonpError);
-      throw new Error(`All request methods failed. POST: ${lastError.message}, JSONP: ${jsonpError.message}`);
-    }
-  }
-
-  async _jsonpRequest(payload, url) {
+  // JSONP implementation that actually works
+  _jsonp(url) {
     return new Promise((resolve, reject) => {
-      const callbackName = `jsonp_${++this.requestId}_${Date.now()}`;
+      const callbackName = `jsonpCallback_${++this.requestId}_${Date.now()}`;
+      const finalUrl = url + `&callback=${callbackName}`;
+      
+      console.log('JSONP request to:', finalUrl);
+      
       let script, timeoutId;
 
-      // Setup timeout
+      // Set up timeout
       timeoutId = setTimeout(() => {
-        this._cleanup(callbackName, script, timeoutId);
-        reject(new Error('JSONP request timeout'));
+        this._cleanup(callbackName, script);
+        reject(new Error('Request timeout after ' + this.config.REQUEST_TIMEOUT + 'ms'));
       }, this.config.REQUEST_TIMEOUT);
 
-      // Setup callback
+      // Set up callback
       window[callbackName] = (response) => {
         this._cleanup(callbackName, script, timeoutId);
+        console.log('JSONP response received:', response);
+        
         if (response && response.success !== false) {
           resolve(response);
         } else {
-          reject(new Error(response && response.error ? response.error : 'JSONP request failed'));
+          reject(new Error(response && response.error ? response.error : 'Request failed'));
         }
       };
 
-      // Build JSONP URL
-      const params = new URLSearchParams({
-        action: payload.action,
-        origin: window.location.origin,
-        callback: callbackName
-      });
-
-      // Add specific parameters based on action
-      if (payload.reservationId) params.set('reservationId', payload.reservationId);
-      if (payload.status) params.set('status', payload.status);
-      if (payload.data) {
-        // For form data, we'll need to use POST anyway, so reject here
-        this._cleanup(callbackName, script, timeoutId);
-        reject(new Error('Form data too large for JSONP'));
-        return;
-      }
-
-      const jsonpUrl = `${url}?${params.toString()}`;
-      console.log('JSONP URL:', jsonpUrl);
-
       // Create and load script
       script = document.createElement('script');
-      script.src = jsonpUrl;
+      script.src = finalUrl;
       script.onerror = () => {
         this._cleanup(callbackName, script, timeoutId);
-        reject(new Error('JSONP script load failed'));
+        reject(new Error('Failed to load script - check your Google Apps Script URL'));
       };
       
       document.head.appendChild(script);
     });
   }
 
-  // Helpers
-  async _augment(data) {
-    return {
-      ...data,
-      clientIP: 'redacted',
-      userAgent: navigator.userAgent.slice(0, 200),
-      origin: window.location.origin,
-      formVersion: '3.0',
-      timestamp: new Date().toISOString()
-    };
-  }
-
   _cleanup(callbackName, script, timeoutId) {
-    try { clearTimeout(timeoutId); } catch {}
-    try { delete window[callbackName]; } catch {}
-    try { script && script.parentNode && script.parentNode.removeChild(script); } catch {}
+    try { clearTimeout(timeoutId); } catch (e) {}
+    try { delete window[callbackName]; } catch (e) {}
+    try { 
+      if (script && script.parentNode) {
+        script.parentNode.removeChild(script); 
+      }
+    } catch (e) {}
   }
 }
 
-// Form Handler Class
+// Form Handler (unchanged)
 class SecureFormHandler {
   constructor(apiClient) {
     this.apiClient = apiClient;
@@ -227,7 +156,6 @@ class SecureFormHandler {
 
   async submitForm(formData) {
     try {
-      // Add form timing data
       const formTime = Math.floor((Date.now() - this.startTime) / 1000);
       const submissionData = {
         ...formData,
@@ -253,22 +181,18 @@ class SecureFormHandler {
   }
 }
 
-// Simple env check (no secrets)
+// Environment validation
 const SecurityUtils = {
   validateEnvironment() {
     const issues = [];
     if (!SECURE_CONFIG.API_URL) issues.push('API URL not configured');
-    if (!SECURE_CONFIG.ALLOWED_ORIGINS.some(origin => window.location.origin.startsWith(origin))) {
-      issues.push('Origin not in allowed list (client check)');
-    }
     return { isValid: issues.length === 0, issues };
   }
 };
 
-// Enhanced Notifications
+// Notifications
 class SecureNotificationSystem {
   static show(msg, type='info', duration=5000) {
-    // Remove existing notifications of same type
     document.querySelectorAll(`.secure-notification--${type}`).forEach(n => n.remove());
     
     const n = document.createElement('div');
@@ -280,13 +204,10 @@ class SecureNotificationSystem {
       background: type==='success' ? '#28a745' :
                   type==='error' ? '#dc3545' :
                   type==='warning' ? '#fd7e14' : '#007bff',
-      fontSize: '14px',
-      fontWeight: '500',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      animation: 'slideInRight 0.3s ease-out'
+      fontSize: '14px', fontWeight: '500',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
     });
     
-    // Add close button
     const closeBtn = document.createElement('span');
     closeBtn.innerHTML = '&times;';
     closeBtn.style.cssText = 'margin-left:10px; cursor:pointer; font-weight:bold;';
@@ -298,39 +219,31 @@ class SecureNotificationSystem {
   }
 }
 
-// Enhanced Wire-up with better error reporting
+// Initialization
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Initializing secure configuration...');
   
-  const env = SecurityUtils.validateEnvironment();
-  if (!env.isValid) {
-    console.warn('Environment validation issues:', env.issues);
-    if (SECURE_CONFIG.IS_PRODUCTION) {
-      // In production, show warning but continue
-      SecureNotificationSystem.show('System validation warning - some features may be limited', 'warning', 8000);
-    }
-  }
-  
   try {
-    // Initialize API client
     window.secureApiClient = new SecureApiClient(SECURE_CONFIG);
     window.secureFormHandler = new SecureFormHandler(window.secureApiClient);
     
     console.log('Secure configuration loaded successfully');
+    SecureNotificationSystem.show('System ready', 'success', 3000);
     
-    // Test connection in debug mode
+    // Test health check
     if (SECURE_CONFIG.DEBUG_MODE) {
       window.secureApiClient.healthCheck()
         .then(response => {
+          console.log('Health check result:', response);
           if (response.success) {
             SecureNotificationSystem.show('Connection verified', 'success', 3000);
           } else {
-            SecureNotificationSystem.show('Connection test failed', 'warning', 5000);
+            SecureNotificationSystem.show('Health check failed: ' + (response.error || 'Unknown error'), 'warning', 8000);
           }
         })
         .catch(e => { 
           console.error('Health check error:', e);
-          SecureNotificationSystem.show('Connection test failed: ' + e.message, 'warning', 8000); 
+          SecureNotificationSystem.show('Connection test failed: ' + e.message, 'error', 8000); 
         });
     }
     
@@ -339,13 +252,3 @@ document.addEventListener('DOMContentLoaded', () => {
     SecureNotificationSystem.show('System initialization failed: ' + e.message, 'error', 0);
   }
 });
-
-// Add CSS for notifications
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes slideInRight {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-`;
-document.head.appendChild(style);
