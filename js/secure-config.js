@@ -2,8 +2,8 @@
 // This version bypasses CORS issues entirely by using JSONP for everything
 
 const SECURE_CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbw3K5qiRPQ9_m08Zp6kAmrp0F0qFj8laVPxIMWmZHDQYp7Xc7PvNxTkelZkVKDJpTRzPQ/exec',
-  ADMIN_API_URL: 'https://script.google.com/macros/s/AKfycbyK00YoLWuDF_qidRgV_jyZurrqx_VW1KKVTaSuGqVhJSx6iVCWLVx83j0odXgohWZtXg/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxFVTZ_z57DInEyVicULCGTHcfg4nCOXbCWrB1j7iR-KP6YKAmK1VsMKkndyxT-gyw5eQ/exec',
+  ADMIN_API_URL: 'https://script.google.com/macros/s/AKfycbz41y2G6MADljUNoCK4iMAPW4ANBptpomkXSPPofuW9Ikr6EMWpf9y46wJqc5PZ3YnOew/exec',
   ADMIN_KEY: 'thoraya2025',
   REQUEST_TIMEOUT: 15000,
   MAX_RETRIES: 3,
