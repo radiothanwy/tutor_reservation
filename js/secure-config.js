@@ -1,7 +1,7 @@
 // CLIENT-SIDE SECURITY CONFIGURATION – no secrets in browser
 const SECURE_CONFIG = {
   // Your public Apps Script web app URL (PUBLIC deployment)
-  API_URL: 'https://script.google.com/macros/s/AKfycbycKauL2es2wToadLZsgv9TyrcW7GfeiVxXvNcK7TQxoNSQHnVOZPbzZ4lDwKjayjRQjg/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwZrmAHDuIcUJqzAGSCeP6B4K84_Bf5dal1XNBS9NnifzbkSdSZW38MpkOzJhNW4Do8yw/exec',
 
   // Your admin Apps Script web app URL (ADMIN deployment)
   ADMIN_API_URL: 'https://script.google.com/macros/s/AKfycbxShiazacyM4BLES66Ky9CHWJLt4b7TzC7n4Kx586kmN_N-xca1_B1jB5-pEx-8IxbkiA/exec',
